@@ -1,3 +1,6 @@
+## kube-state-metrics deployment
+## Exposes Kubernetes object metrics for Prometheus to scrape.
+## Note: ClusterRole here is intentionally BROAD read-only (get/list/watch) for demo speed; tighten for production.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -45,6 +48,7 @@ spec:
       containers:
       - name: kube-state-metrics
         image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.13.0
+        # Default port exposed by kube-state-metrics
         ports:
         - containerPort: 8080
 ---

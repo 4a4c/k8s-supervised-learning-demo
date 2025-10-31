@@ -1,3 +1,10 @@
+## TEMPLATE ONLY: Stress pod for generating CPU and memory load.
+## Replace PLACEHOLDER values before applying, or use automation to render.
+## Examples:
+##   - name: stress-cpu-2
+##     args: ["--cpu","2"]
+##   - name: stress-mem-1g
+##     args: ["--vm","1","--vm-bytes","1G"]
 apiVersion: v1
 kind: Pod
 metadata:
@@ -17,6 +24,7 @@ spec:
     - "VM_STRESS"
     - --vm-bytes
     - "VM_BYTES"
+    # Limits are intentionally high for demo; adjust as needed.
     resources:
       limits:
         cpu: "3"

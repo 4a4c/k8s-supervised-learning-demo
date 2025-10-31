@@ -1,3 +1,8 @@
+## TEMPLATE ONLY: Victim pod to observe scheduling/preemption under load.
+## Replace PRIORITY_PLACEHOLDER and resource placeholders before applying.
+## Typical substitutions:
+##   priorityClassName: low-priority | medium-priority | high-priority
+##   requests/limits: use millicores (e.g., 100m) and Mi/Gi for memory
 apiVersion: v1
 kind: Pod
 metadata:
@@ -6,6 +11,7 @@ metadata:
   labels:
     app: victim
 spec:
+  # Choose one of: low-priority | medium-priority | high-priority
   priorityClassName: PRIORITY_PLACEHOLDER
   containers:
   - name: pause

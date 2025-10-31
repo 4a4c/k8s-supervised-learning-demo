@@ -1,3 +1,5 @@
+## Namespace for the risk-demo resources
+## All namespaced manifests in this demo should target this namespace.
 apiVersion: v1
 kind: Namespace
 metadata:
