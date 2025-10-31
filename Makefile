@@ -1,4 +1,4 @@
-.PHONY: help minikube-start minikube-start-ml minikube-start-verbose minikube-logs minikube-docker-logs minikube-stop minikube-delete minikube-status minikube-dashboard minikube-dashboard-open minikube-dashboard-stop minikube-dashboard-url k8s-nodes k8s-contexts cluster-info helm-version k kubectl-mk mkubectl kubectl-reconcile minikube-addons-list minikube-addons-enable
+.PHONY: help minikube-start minikube-start-ml minikube-start-verbose minikube-logs minikube-docker-logs minikube-stop minikube-delete minikube-status minikube-dashboard minikube-dashboard-open minikube-dashboard-stop minikube-dashboard-url k8s-nodes k8s-contexts cluster-info helm-version k kubectl-mk mkubectl kubectl-reconcile minikube-addons-list minikube-addons-enable app-build app-deploy app-delete app-port-forward app-url loadtest-install-deps loadtest-run risk-demo-apply risk-demo-delete risk-demo-port-forward-prom
 
 # Tunables for SSH bridge enforcement during start
 # Override at invocation time, e.g.:
@@ -28,6 +28,22 @@ help:
 	@echo "  minikube-docker-logs         Print Docker container logs"
 	@echo "  minikube-addons-list         List available addons"
 	@echo "  minikube-addons-enable       Enable addon (pass ADDON='name')"
+	@echo ""
+	@echo "Risk Demo:"
+	@echo "  risk-demo-apply              Apply namespace, priority classes, kube-state-metrics, prometheus"
+	@echo "  risk-demo-port-forward-prom  Forward localhost:9090 -> svc/prometheus:9090"
+	@echo "  risk-demo-delete             Delete risk-demo resources"
+	@echo ""
+	@echo "Sample App (test-app):"
+	@echo "  app-build                    Build Docker image (test-app:dev) and load into minikube"
+	@echo "  app-deploy                   Apply Kubernetes manifests for test-app"
+	@echo "  app-delete                   Remove test-app manifests"
+	@echo "  app-port-forward             Forward localhost:8000 -> svc/test-app:80"
+	@echo "  app-url                      Print local URL for test-app"
+	@echo ""
+	@echo "Load Testing:"
+	@echo "  loadtest-install-deps        Install Python deps for stress script"
+	@echo "  loadtest-run                 Run stress (URL=http://127.0.0.1:8000 C=20 D=30)"
 	@echo ""
 	@echo "Dashboard:"
 	@echo "  minikube-dashboard           Open dashboard (non-blocking, uses host browser)"
@@ -155,3 +171,71 @@ minikube-addons-enable:
 		exit 1; \
 	fi
 	minikube addons enable $(ADDON)
+
+# --- Sample application: test-app ---
+
+APP_IMAGE ?= test-app:dev
+APP_DIR := services/test-app
+APP_MANIFEST := deploy/k8s/test-app/k8s.yaml
+
+app-build:
+	# Build the Docker image for test-app and load it into minikube
+	docker build -t $(APP_IMAGE) $(APP_DIR)
+	minikube image load $(APP_IMAGE)
+
+app-deploy:
+	# Deploy or update test-app manifests
+	kubectl apply -f $(APP_MANIFEST)
+	@echo "Waiting for rollout..."
+	kubectl rollout status deploy/test-app
+
+app-delete:
+	# Delete test-app manifests (ignore if missing)
+	kubectl delete -f $(APP_MANIFEST) --ignore-not-found
+
+app-port-forward:
+	# Forward local 8000 to service/test-app:80
+	@echo "Visit: http://127.0.0.1:8000/"
+	kubectl port-forward svc/test-app 8000:80
+
+app-url:
+	@echo "http://127.0.0.1:8000/"
+
+# --- Load testing ---
+
+URL ?= http://127.0.0.1:8000/
+C ?= 20
+D ?= 30
+
+loadtest-install-deps:
+	pip3 install -r scripts/stress/requirements.txt
+
+loadtest-run:
+	python3 scripts/stress/simple_stress.py --url $(URL) --concurrency $(C) --duration $(D)
+
+# --- Risk demo apply/delete ---
+
+RISK_DIR := deploy/k8s/risk-demo
+
+risk-demo-apply:
+	kubectl apply -f $(RISK_DIR)/namespace.yaml
+	kubectl apply -f $(RISK_DIR)/priority-classes.yaml
+	kubectl apply -f $(RISK_DIR)/kube-state-metrics.yaml
+	kubectl apply -f $(RISK_DIR)/prometheus.yaml
+	@echo "Waiting for kube-state-metrics..." && \
+		kubectl -n risk-demo rollout status deploy/kube-state-metrics
+	@echo "Waiting for prometheus..." && \
+		kubectl -n risk-demo rollout status deploy/prometheus
+	@echo "✔ Risk demo applied. Use 'make risk-demo-port-forward-prom' to open Prometheus."
+
+risk-demo-port-forward-prom:
+	@echo "Visit: http://127.0.0.1:9090/"
+	kubectl -n risk-demo port-forward svc/prometheus 9090:9090
+
+risk-demo-delete:
+	# Delete namespaced resources first, then cluster-scoped
+	-kubectl delete -f $(RISK_DIR)/prometheus.yaml --ignore-not-found
+	-kubectl delete -f $(RISK_DIR)/kube-state-metrics.yaml --ignore-not-found
+	-kubectl delete -f $(RISK_DIR)/priority-classes.yaml --ignore-not-found
+	-kubectl delete -f $(RISK_DIR)/namespace.yaml --ignore-not-found
+	@echo "✔ Risk demo deleted."

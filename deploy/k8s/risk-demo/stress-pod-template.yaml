@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stress-PLACEHOLDER
+  namespace: risk-demo
+  labels:
+    app: stress
+spec:
+  restartPolicy: Never
+  containers:
+  - name: stress
+    image: polinux/stress-ng:latest
+    args:
+    - --cpu
+    - "CPU_STRESS"
+    - --vm
+    - "VM_STRESS"
+    - --vm-bytes
+    - "VM_BYTES"
+    resources:
+      limits:
+        cpu: "3"
+        memory: "3Gi"
