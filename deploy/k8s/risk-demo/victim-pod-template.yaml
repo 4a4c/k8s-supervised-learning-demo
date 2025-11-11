@@ -10,6 +10,7 @@ metadata:
   namespace: risk-demo
   labels:
     app: victim
+    risk: RISK_LABEL_PLACEHOLDER
 spec:
   # Choose one of: low-priority | medium-priority | high-priority
   priorityClassName: PRIORITY_PLACEHOLDER
@@ -23,3 +24,17 @@ spec:
       limits:
         cpu: CPU_LIM_PLACEHOLDER
         memory: MEM_LIM_PLACEHOLDER
+  - name: workload
+    image: polinux/stress-ng:latest
+    command: ["sh", "-c"]
+    args:
+      - >-
+        stress-ng --cpu 1 --cpu-load 70 --vm WORKLOAD_VM --vm-bytes WORKLOAD_MEM_BYTES --timeout 0 &
+        sleep infinity
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        cpu: "100m"
+        memory: "WORKLOAD_MEM_LIMIT"

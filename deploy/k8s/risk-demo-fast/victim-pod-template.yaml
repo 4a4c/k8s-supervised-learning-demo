@@ -1,0 +1,35 @@
+## FAST TEMPLATE: Victim pod with minimal pause container and limits applied to workload only.
+## Placeholders are the same as the standard template to stay compatible with the generator.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: victim-PLACEHOLDER
+  labels:
+    app: victim
+    risk: RISK_LABEL_PLACEHOLDER
+spec:
+  priorityClassName: PRIORITY_PLACEHOLDER
+  containers:
+  - name: pause
+    image: registry.k8s.io/pause:3.9
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+  - name: workload
+    image: polinux/stress-ng:latest
+    command: ["sh", "-c"]
+    args:
+      - >-
+        stress-ng --cpu 1 --cpu-load 70 --vm WORKLOAD_VM --vm-bytes WORKLOAD_MEM_BYTES --timeout 0 &
+        sleep infinity
+    resources:
+      requests:
+        cpu: CPU_REQ_PLACEHOLDER
+        memory: MEM_REQ_PLACEHOLDER
+      limits:
+        cpu: CPU_LIM_PLACEHOLDER
+        memory: MEM_LIM_PLACEHOLDER

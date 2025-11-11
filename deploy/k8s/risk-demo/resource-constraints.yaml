@@ -1,0 +1,42 @@
+## Namespace-level resource safety rails for risk-demo
+## - ResourceQuota caps the total CPU/Memory used by all Pods in the namespace
+## - LimitRange sets sane per-Pod defaults (requests/limits) when not specified
+##
+## Tune these values to match your minikube resources.
+## The defaults below aim to keep the node responsive during stress tests.
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rq-risk-demo
+  namespace: risk-demo
+spec:
+  hard:
+    requests.cpu: "3000m"     # Aggregate CPU requests (3 cores)
+    limits.cpu:   "4000m"     # Aggregate CPU limits (4 cores)
+    requests.memory: "3Gi"    # Aggregate memory requests
+    limits.memory:   "5Gi"    # Aggregate memory limits (increased for smaller cluster + kube-state-metrics)
+    pods: "50"                # Safety cap on total pods
+
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: lr-risk-demo-defaults
+  namespace: risk-demo
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "300m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "256Mi"
+      max:
+        cpu: "4"      # allow stress pods high limits (up to node capacity)
+        memory: "4Gi"
+      min:
+        cpu: "50m"
+        memory: "128Mi"

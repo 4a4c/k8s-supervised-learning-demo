@@ -1,15 +1,8 @@
-## TEMPLATE ONLY: Stress pod for generating CPU and memory load.
-## Replace PLACEHOLDER values before applying, or use automation to render.
-## Examples:
-##   - name: stress-cpu-2
-##     args: ["--cpu","2"]
-##   - name: stress-mem-1g
-##     args: ["--vm","1","--vm-bytes","1G"]
+## FAST TEMPLATE: Same stress pod; parameterized limits/requests.
 apiVersion: v1
 kind: Pod
 metadata:
   name: stress-PLACEHOLDER
-  namespace: risk-demo
   labels:
     app: stress
 spec:
@@ -24,7 +17,6 @@ spec:
     - "VM_STRESS"
     - --vm-bytes
     - "VM_BYTES"
-    # Requests/limits are parameterized to fit within namespace quotas
     resources:
       requests:
         cpu: CPU_REQ_STRESS
