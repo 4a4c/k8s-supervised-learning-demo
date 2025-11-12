@@ -16,3 +16,6 @@ data/*.csv
 
 # OS
 .DS_Store
+
+# tmp
+tmp/
