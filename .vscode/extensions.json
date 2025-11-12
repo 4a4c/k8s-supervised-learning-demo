@@ -1,6 +1,8 @@
 {
   "recommendations": [
     "ms-vscode.makefile-tools",
-    "usernamehw.vscode-status-bar-commands"
+    "usernamehw.vscode-status-bar-commands",
+    "yzane.markdown-pdf",
+    "tomoki1207.pdf"
   ]
 }
