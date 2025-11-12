@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Data (exclude all CSVs except the one needed for Binder)
+data/*.csv
+!data/pod_risk_data_fast_combined.csv
+
+# VS Code
+.vscode/*.log
+
+# OS
+.DS_Store

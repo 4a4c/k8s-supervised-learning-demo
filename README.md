@@ -1,57 +1,174 @@
 # k8s-supervised-learning-demo
 
-A Kubernetes-based playground for supervised learning and AI performance experiments. This repo includes a productive dev environment and scaffolding to run a sample application, load tests, and future ML training/analysis.
+Machine learning demo for predicting Kubernetes pod OOMKilled/Eviction risk using supervised learning. Collects training data by observing pod behavior under resource pressure in a local minikube cluster.
 
 ## What's here
 
-- Dev environment: Minikube + kubectl + Helm (inside a Dev Container)
-- Sample app scaffold (FastAPI) and Kubernetes manifests
-- Load testing script scaffold
-- Room to grow: models, datasets, notebooks, and performance analysis
+- **Data generation**: Automated pod stress testing with metrics collection
+- **Ground truth labels**: OOMKilled/Evicted events (Path A) or heuristic memory pressure (Path B)
+- **Baseline training**: RandomForest classifier with automatic leakage mitigation
+- **Dev environment**: Minikube + kubectl + metrics-server in Dev Container
 
-## Getting started
+## Quick Start
 
-1) Set up the dev environment and start Minikube:
+### 🎯 For Assignment Review: Interactive Notebook (No Setup Required)
 
-   See: docs/dev-environment.md
+**Click here to run the complete analysis in your browser:**
 
-2) Deploy the sample app (once created):
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/4a4c/k8s-supervised-learning-demo/main?filepath=pod_risk_evaluation.ipynb)
 
-   - Build the image and load into minikube
-   - Apply Kubernetes manifests
-   - Port-forward and hit the endpoint
+The notebook includes:
+- Pre-generated training data (`pod_risk_data_fast_combined.csv`)
+- Complete model training pipeline (RandomForest with leakage mitigation)
+- Performance metrics (accuracy, balanced accuracy, ROC-AUC curves)
+- Confusion matrix analysis
+- No Kubernetes cluster or local setup needed
 
-3) Run a simple load test and collect metrics.
+**That's it!** All cells are ready to run sequentially to reproduce the results.
+
+---
+
+### 🛠️ Optional: Full Development Environment (For Data Generation & Experimentation)
+
+*Only needed if you want to generate new training data or modify the pipeline.*
+
+#### Generate data quickly (fast parallel mode)
+```bash
+# Start standard ML cluster (8Gi, metrics-server)
+make minikube-start-ml
+
+# Apply dual-namespace manifests for fast runs
+make risk-demo-fast-apply
+
+# One-time: set up generator venv
+make datagen-local-setup
+
+# Run two generators concurrently and merge outputs
+make datagen-fast-parallel
+make datagen-fast-merge  # → data/pod_risk_data_fast_combined.csv
+```
+
+#### Alternative: Ground-truth labels (slower, production-faithful)
+```bash
+# Strict eviction cluster (6Gi, tuned kubelet)
+make minikube-start-oom
+
+# Apply single-namespace environment
+make risk-demo-apply
+
+# Run single generator (see docs/architecture.md for options)
+make datagen-local
+```
+
+#### Validate and train locally
+*After generating fresh data:*
+```bash
+# Validate CSV quality
+make validate-data
+
+# Train baseline model
+make ml-setup
+make train-baseline
+```
 
 ## Repository structure
 
-Planned structure as we add components:
+```
+services/
+  generate-data/          # Data generation script and requirements
+deploy/
+  k8s/risk-demo/          # Namespace, priority classes, resource constraints, pod templates
+  k8s/risk-demo-fast/     # Dual-namespace manifests for fast parallel data generation
+scripts/
+  validate_data.py        # CSV quality check and ML-readiness assessment
+  train_baseline.py       # RandomForest trainer with leakage mitigation
+  requirements-ml.txt     # scikit-learn
+data/
+  pod_risk_data.csv       # Single-run CSV (heuristic or ground-truth)
+  pod_risk_data_fast_combined.csv  # Merged fast-mode CSV (A+B namespaces)
+docs/
+  architecture.md         # Architecture & workflow overview
+  eviction-tuning.md      # Kubelet settings for ground-truth OOM/Evict
+  dev-environment.md      # Dev Container setup
+```
 
-- `services/` — Application services
-  - `test-app/` — Minimal FastAPI app (hello world + /health)
-- `deploy/` — Deployment artifacts
-  - `k8s/` — Raw Kubernetes manifests
-    - `test-app/` — Deployment and Service for the sample app
-- `scripts/` — Utilities and automation
-  - `stress/` — Simple load test scripts (Python)
-- `models/` — ML models, training code, checkpoints (gitignored)
-- `data/` — Datasets or generated data (gitignored)
-- `notebooks/` — Experiment notebooks (gitignored checkpoints)
-- `docs/` — Documentation
-  - `dev-environment.md` — Full Dev Container + Minikube guide
-  - `architecture.md` — Project layout and design notes
+## Training Data
 
-As we implement each piece, we'll wire convenient Makefile targets (e.g., app deploy, port-forward, load test).
+Data collected with fast parallel mode is merged into `data/pod_risk_data_fast_combined.csv`. Each row represents a victim pod snapshot after an observation window + metrics scrape.
+
+**Key features:** CPU/memory requests & limits, priority class, node pressure %, pod usage (CPU %, memory MiB).
+
+**Target labels:** `low` | `medium` | `high` risk of eviction/OOM.
+
+**Label sources:**
+- `ground_truth` — Real OOMKilled/Evicted events (requires strict eviction cluster).
+- `heuristic` — Memory usage ratio thresholds (faster iteration; configurable via `HEUR_HIGH_RATIO`/`HEUR_MED_RATIO`).
+
+For complete column definitions, units, derivations, and leakage mitigation guidance, see **[Dataset Columns](docs/architecture.md#dataset-columns-pod_risk_data_fast_combinedcsv)** in `docs/architecture.md`.
+
+
+## Workflow Options
+
+### Fast Parallel (default in this repo)
+Two concurrent generators → merged `pod_risk_data_fast_combined.csv`. Higher throughput, heuristic labels.
+
+### Ground-truth (strict eviction cluster)
+`make minikube-start-oom` → captures real OOMKilled/Evicted events. Production-faithful but slower.
+
+### Single-namespace heuristic (development)
+`make datagen-local` → simplest setup for feature iteration.
+
+For detailed workflow diagrams, execution modes, and architecture, see **[docs/architecture.md](docs/architecture.md)**.
+
+
+## Key Make Targets
+
+**Cluster:**
+- `make minikube-start-oom` — 6Gi cluster with strict eviction
+- `make minikube-start-ml` — 8Gi cluster for heuristic mode
+- `make minikube-dashboard` — Open Kubernetes dashboard
+
+**Data generation:**
+- `make datagen-local-setup` — Create venv (one-time)
+- `make risk-demo-fast-apply` — Deploy dual namespaces
+- `make datagen-fast-parallel` — Start A+B generators
+- `make datagen-fast-merge` — Merge → `data/pod_risk_data_fast_combined.csv`
+- `make datagen-fast-checkpoint` — Mid-run snapshot (SIGUSR1)
+- See `make help` or [docs/architecture.md](docs/architecture.md#execution-modes) for all options
+
+**Validation & training:**
+- `make validate-data` — Check CSV quality and ML-readiness
+- `make ml-setup` — Install scikit-learn (one-time)
+- `make train-baseline` — Train RandomForest with leakage mitigation
+- `make train-baseline-fast-checkpoint` — Train on merged checkpoint CSV
+
+**Environment:**
+- `make risk-demo-apply` — Deploy namespace, limits, priorities, kube-state-metrics
+- `make risk-demo-delete` — Clean up risk-demo resources
 
 ## Documentation
 
-- Dev environment guide: docs/dev-environment.md
-- Architecture and layout: docs/architecture.md (WIP)
+- **Architecture & workflow**: `docs/architecture.md`
+- **Eviction tuning**: `docs/eviction-tuning.md`
+- **Dev environment**: `docs/dev-environment.md`
+- **Fast-mode manifests**: `deploy/k8s/risk-demo-fast/README.md`
 
-## Next steps
+## Tuning
 
-Open an issue or ask for the next scaffold you'd like first:
-- Sample app + deploy targets
-- Load test script wired to Makefile
-- Perf stack (Prometheus + Grafana) for dashboards
-- Model training skeleton and data ingestion
+**Eviction thresholds (ground-truth mode):**
+- See [docs/eviction-tuning.md](docs/eviction-tuning.md)
+
+**Heuristic thresholds:**
+- Adjust `HEUR_HIGH_RATIO`/`HEUR_MED_RATIO` environment variables (defaults: 0.95/0.85)
+
+**Resource constraints:**
+- Edit `deploy/k8s/risk-demo/resource-constraints.yaml` for namespace quotas and per-container limits
+
+## Current Status
+
+- ✅ Data generation with metrics-server (no Prometheus dependency)
+- ✅ Ground-truth and heuristic labeling
+- ✅ Validation script with ML-readiness checks
+- ✅ Baseline RandomForest trainer with leakage mitigation
+- ✅ Streamlined Makefile for local runs
+- 🔄 Ready for full data collection and model iteration
