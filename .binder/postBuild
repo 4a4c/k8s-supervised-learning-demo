@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+# Ensure ipykernel is present and the kernelspec matches the notebook metadata
+python -m pip install --upgrade pip
+python -m pip install ipykernel
+python -m ipykernel install --user --name=python3 --display-name "Python 3 (ipykernel)"
