@@ -163,12 +163,3 @@ For detailed workflow diagrams, execution modes, and architecture, see **[docs/a
 
 **Resource constraints:**
 - Edit `deploy/k8s/risk-demo/resource-constraints.yaml` for namespace quotas and per-container limits
-
-## Current Status
-
-- ✅ Data generation with metrics-server (no Prometheus dependency)
-- ✅ Ground-truth and heuristic labeling
-- ✅ Validation script with ML-readiness checks
-- ✅ Baseline RandomForest trainer with leakage mitigation
-- ✅ Streamlined Makefile for local runs
-- 🔄 Ready for full data collection and model iteration
